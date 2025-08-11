@@ -626,5 +626,348 @@
       "python": "def intersect(nums1, nums2):\n    from collections import Counter\n    count1 = Counter(nums1)\n    result = []\n    \n    for num in nums2:\n        if count1[num] > 0:\n            result.append(num)\n            count1[num] -= 1\n    \n    return result",
       "javascript": "function intersect(nums1, nums2) {\n    const count = {};\n    const result = [];\n    \n    for (let num of nums1) {\n        count[num] = (count[num] || 0) + 1;\n    }\n    \n    for (let num of nums2) {\n        if (count[num] > 0) {\n            result.push(num);\n            count[num]--;\n        }\n    }\n    \n    return result;\n}"
     }
+  },
+  {
+    "id": 18,
+    "title": "Valid Anagram",
+    "difficulty": "easy",
+    "description": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram is a word or phrase formed by rearranging the letters of a different word or phrase, typically using all the original letters exactly once.",
+    "examples": [
+      {
+        "input": "s = \"anagram\", t = \"nagaram\"",
+        "output": "true"
+      },
+      {
+        "input": "s = \"rat\", t = \"car\"",
+        "output": "false"
+      }
+    ],
+    "constraints": [
+      "1 <= s.length, t.length <= 5 * 10^4",
+      "s and t consist of lowercase English letters"
+    ],
+    "tags": ["Hash Table", "String", "Sorting"],
+    "testCases": [
+      { "input": "\"anagram\"\n\"nagaram\"", "output": "true" },
+      { "input": "\"rat\"\n\"car\"", "output": "false" },
+      { "input": "\"a\"\n\"ab\"", "output": "false" }
+    ],
+    "hints": [
+      "Use character frequency counting.",
+      "Sorting both strings is another approach."
+    ],
+    "solution": {
+      "python": "def isAnagram(s, t):\n    if len(s) != len(t):\n        return False\n    \n    from collections import Counter\n    return Counter(s) == Counter(t)",
+      "javascript": "function isAnagram(s, t) {\n    if (s.length !== t.length) return false;\n    \n    const count = {};\n    for (let char of s) {\n        count[char] = (count[char] || 0) + 1;\n    }\n    \n    for (let char of t) {\n        if (!count[char]) return false;\n        count[char]--;\n    }\n    \n    return true;\n}"
+    }
+  },
+  {
+    "id": 19,
+    "title": "Group Anagrams",
+    "difficulty": "medium",
+    "description": "Given an array of strings strs, group the anagrams together. You can return the answer in any order. An anagram is a word or phrase formed by rearranging the letters of a different word or phrase, typically using all the original letters exactly once.",
+    "examples": [
+      {
+        "input": "strs = [\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]",
+        "output": "[[\"bat\"],[\"nat\",\"tan\"],[\"ate\",\"eat\",\"tea\"]]"
+      }
+    ],
+    "constraints": [
+      "1 <= strs.length <= 10^4",
+      "0 <= strs[i].length <= 100"
+    ],
+    "tags": ["Array", "Hash Table", "String", "Sorting"],
+    "testCases": [
+      { "input": "[\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]", "output": "[[\"bat\"],[\"nat\",\"tan\"],[\"ate\",\"eat\",\"tea\"]]" },
+      { "input": "[\"\"]", "output": "[[\"\"]]" },
+      { "input": "[\"a\"]", "output": "[[\"a\"]]" }
+    ],
+    "hints": [
+      "Use sorted string as key for grouping.",
+      "Hash map with sorted strings as keys."
+    ],
+    "solution": {
+      "python": "def groupAnagrams(strs):\n    from collections import defaultdict\n    groups = defaultdict(list)\n    \n    for s in strs:\n        key = ''.join(sorted(s))\n        groups[key].append(s)\n    \n    return list(groups.values())",
+      "javascript": "function groupAnagrams(strs) {\n    const groups = {};\n    \n    for (let str of strs) {\n        const key = str.split('').sort().join('');\n        if (!groups[key]) groups[key] = [];\n        groups[key].push(str);\n    }\n    \n    return Object.values(groups);\n}"
+    }
+  },
+  {
+    "id": 20,
+    "title": "Contains Duplicate",
+    "difficulty": "easy",
+    "description": "Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.",
+    "examples": [
+      {
+        "input": "nums = [1,2,3,1]",
+        "output": "true"
+      },
+      {
+        "input": "nums = [1,2,3,4]",
+        "output": "false"
+      }
+    ],
+    "constraints": [
+      "1 <= nums.length <= 10^5",
+      "-10^9 <= nums[i] <= 10^9"
+    ],
+    "tags": ["Array", "Hash Table", "Sorting"],
+    "testCases": [
+      { "input": "[1,2,3,1]", "output": "true" },
+      { "input": "[1,2,3,4]", "output": "false" },
+      { "input": "[1,1,1,3,3,4,3,2,4,2]", "output": "true" }
+    ],
+    "hints": [
+      "Use a hash set to track seen elements.",
+      "Sorting is another approach but less efficient."
+    ],
+    "solution": {
+      "python": "def containsDuplicate(nums):\n    return len(nums) != len(set(nums))",
+      "javascript": "function containsDuplicate(nums) {\n    const seen = new Set();\n    for (let num of nums) {\n        if (seen.has(num)) return true;\n        seen.add(num);\n    }\n    return false;\n}"
+    }
+  },
+  {
+    "id": 21,
+    "title": "Product of Array Except Self",
+    "difficulty": "medium",
+    "description": "Given an integer array nums, return an array answer such that answer[i] is equal to the product of all the elements of nums except nums[i]. You must write an algorithm that runs in O(n) time and without using the division operation.",
+    "examples": [
+      {
+        "input": "nums = [1,2,3,4]",
+        "output": "[24,12,8,6]"
+      },
+      {
+        "input": "nums = [-1,1,0,-3,3]",
+        "output": "[0,0,9,0,0]"
+      }
+    ],
+    "constraints": [
+      "2 <= nums.length <= 10^5",
+      "-30 <= nums[i] <= 30"
+    ],
+    "tags": ["Array", "Prefix Sum"],
+    "testCases": [
+      { "input": "[1,2,3,4]", "output": "[24,12,8,6]" },
+      { "input": "[-1,1,0,-3,3]", "output": "[0,0,9,0,0]" },
+      { "input": "[2,3,4,5]", "output": "[60,40,30,24]" }
+    ],
+    "hints": [
+      "Think about prefix and suffix products.",
+      "Use two passes: left to right, then right to left."
+    ],
+    "solution": {
+      "python": "def productExceptSelf(nums):\n    n = len(nums)\n    result = [1] * n\n    \n    # Left products\n    for i in range(1, n):\n        result[i] = result[i-1] * nums[i-1]\n    \n    # Right products\n    right = 1\n    for i in range(n-1, -1, -1):\n        result[i] *= right\n        right *= nums[i]\n    \n    return result",
+      "javascript": "function productExceptSelf(nums) {\n    const n = nums.length;\n    const result = new Array(n).fill(1);\n    \n    // Left products\n    for (let i = 1; i < n; i++) {\n        result[i] = result[i-1] * nums[i-1];\n    }\n    \n    // Right products\n    let right = 1;\n    for (let i = n-1; i >= 0; i--) {\n        result[i] *= right;\n        right *= nums[i];\n    }\n    \n    return result;\n}"
+    }
+  },
+  {
+    "id": 22,
+    "title": "Maximum Depth of Binary Tree",
+    "difficulty": "easy",
+    "description": "Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.",
+    "examples": [
+      {
+        "input": "root = [3,9,20,null,null,15,7]",
+        "output": "3"
+      },
+      {
+        "input": "root = [1,null,2]",
+        "output": "2"
+      }
+    ],
+    "constraints": [
+      "The number of nodes in the tree is in the range [0, 10^4]",
+      "-100 <= Node.val <= 100"
+    ],
+    "tags": ["Tree", "Depth-First Search", "Breadth-First Search", "Binary Tree"],
+    "testCases": [
+      { "input": "[3,9,20,null,null,15,7]", "output": "3" },
+      { "input": "[1,null,2]", "output": "2" },
+      { "input": "[]", "output": "0" }
+    ],
+    "hints": [
+      "Use recursion to traverse the tree.",
+      "The depth is 1 + maximum of left and right subtree depths."
+    ],
+    "solution": {
+      "python": "def maxDepth(root):\n    if not root:\n        return 0\n    return 1 + max(maxDepth(root.left), maxDepth(root.right))",
+      "javascript": "function maxDepth(root) {\n    if (!root) return 0;\n    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));\n}"
+    }
+  },
+  {
+    "id": 23,
+    "title": "Same Tree",
+    "difficulty": "easy",
+    "description": "Given the roots of two binary trees p and q, write a function to check if they are the same or not. Two binary trees are considered the same if they are structurally identical, and the nodes have the same value.",
+    "examples": [
+      {
+        "input": "p = [1,2,3], q = [1,2,3]",
+        "output": "true"
+      },
+      {
+        "input": "p = [1,2], q = [1,null,2]",
+        "output": "false"
+      }
+    ],
+    "constraints": [
+      "The number of nodes in both trees is in the range [0, 100]",
+      "-10^4 <= Node.val <= 10^4"
+    ],
+    "tags": ["Tree", "Depth-First Search", "Binary Tree"],
+    "testCases": [
+      { "input": "[1,2,3]\n[1,2,3]", "output": "true" },
+      { "input": "[1,2]\n[1,null,2]", "output": "false" },
+      { "input": "[1,2,1]\n[1,1,2]", "output": "false" }
+    ],
+    "hints": [
+      "Use recursion to compare trees.",
+      "Both trees are same if roots are same and subtrees are same."
+    ],
+    "solution": {
+      "python": "def isSameTree(p, q):\n    if not p and not q:\n        return True\n    if not p or not q:\n        return False\n    return (p.val == q.val and \n            isSameTree(p.left, q.left) and \n            isSameTree(p.right, q.right))",
+      "javascript": "function isSameTree(p, q) {\n    if (!p && !q) return true;\n    if (!p || !q) return false;\n    return p.val === q.val && \n           isSameTree(p.left, q.left) && \n           isSameTree(p.right, q.right);\n}"
+    }
+  },
+  {
+    "id": 24,
+    "title": "Invert Binary Tree",
+    "difficulty": "easy",
+    "description": "Given the root of a binary tree, invert the tree, and return its root. Inverting a binary tree means swapping the left and right children of all nodes.",
+    "examples": [
+      {
+        "input": "root = [4,2,7,1,3,6,9]",
+        "output": "[4,7,2,9,6,3,1]"
+      },
+      {
+        "input": "root = [2,1,3]",
+        "output": "[2,3,1]"
+      }
+    ],
+    "constraints": [
+      "The number of nodes in the tree is in the range [0, 100]",
+      "-100 <= Node.val <= 100"
+    ],
+    "tags": ["Tree", "Depth-First Search", "Breadth-First Search", "Binary Tree"],
+    "testCases": [
+      { "input": "[4,2,7,1,3,6,9]", "output": "[4,7,2,9,6,3,1]" },
+      { "input": "[2,1,3]", "output": "[2,3,1]" },
+      { "input": "[]", "output": "[]" }
+    ],
+    "hints": [
+      "Swap left and right children of each node.",
+      "Use recursion to invert subtrees."
+    ],
+    "solution": {
+      "python": "def invertTree(root):\n    if not root:\n        return None\n    \n    # Swap children\n    root.left, root.right = root.right, root.left\n    \n    # Recursively invert subtrees\n    invertTree(root.left)\n    invertTree(root.right)\n    \n    return root",
+      "javascript": "function invertTree(root) {\n    if (!root) return null;\n    \n    // Swap children\n    [root.left, root.right] = [root.right, root.left];\n    \n    // Recursively invert subtrees\n    invertTree(root.left);\n    invertTree(root.right);\n    \n    return root;\n}"
+    }
+  },
+  {
+    "id": 25,
+    "title": "House Robber",
+    "difficulty": "medium",
+    "description": "You are a professional robber planning to rob houses along a street. Each house has a certain amount of money stashed, the only constraint stopping you from robbing each of them is that adjacent houses have security systems connected and it will automatically contact the police if two adjacent houses were broken into on the same night. Given an integer array nums representing the amount of money of each house, return the maximum amount of money you can rob tonight without alerting the police.",
+    "examples": [
+      {
+        "input": "nums = [1,2,3,1]",
+        "output": "4",
+        "explanation": "Rob house 1 (money = 1) and then rob house 3 (money = 3). Total amount you can rob = 1 + 3 = 4."
+      },
+      {
+        "input": "nums = [2,7,9,3,1]",
+        "output": "12",
+        "explanation": "Rob house 1 (money = 2), rob house 3 (money = 9) and rob house 5 (money = 1). Total amount you can rob = 2 + 9 + 1 = 12."
+      }
+    ],
+    "constraints": [
+      "1 <= nums.length <= 100",
+      "0 <= nums[i] <= 400"
+    ],
+    "tags": ["Array", "Dynamic Programming"],
+    "testCases": [
+      { "input": "[1,2,3,1]", "output": "4" },
+      { "input": "[2,7,9,3,1]", "output": "12" },
+      { "input": "[2,1,1,2]", "output": "4" }
+    ],
+    "hints": [
+      "Use dynamic programming.",
+      "For each house, decide whether to rob it or not.",
+      "dp[i] = max(dp[i-1], dp[i-2] + nums[i])"
+    ],
+    "solution": {
+      "python": "def rob(nums):\n    if not nums:\n        return 0\n    if len(nums) == 1:\n        return nums[0]\n    \n    prev2, prev1 = nums[0], max(nums[0], nums[1])\n    \n    for i in range(2, len(nums)):\n        current = max(prev1, prev2 + nums[i])\n        prev2, prev1 = prev1, current\n    \n    return prev1",
+      "javascript": "function rob(nums) {\n    if (nums.length === 0) return 0;\n    if (nums.length === 1) return nums[0];\n    \n    let prev2 = nums[0];\n    let prev1 = Math.max(nums[0], nums[1]);\n    \n    for (let i = 2; i < nums.length; i++) {\n        const current = Math.max(prev1, prev2 + nums[i]);\n        prev2 = prev1;\n        prev1 = current;\n    }\n    \n    return prev1;\n}"
+    }
+  },
+  {
+    "id": 26,
+    "title": "Coin Change",
+    "difficulty": "medium",
+    "description": "You are given an integer array coins representing coins of different denominations and an integer amount representing a total amount of money. Return the fewest number of coins that you need to make up that amount. If that amount of money cannot be made up by any combination of the coins, return -1.",
+    "examples": [
+      {
+        "input": "coins = [1,3,4], amount = 6",
+        "output": "2",
+        "explanation": "The minimum number of coins is 2 (3 + 3)."
+      },
+      {
+        "input": "coins = [2], amount = 3",
+        "output": "-1"
+      }
+    ],
+    "constraints": [
+      "1 <= coins.length <= 12",
+      "1 <= coins[i] <= 2^31 - 1",
+      "0 <= amount <= 10^4"
+    ],
+    "tags": ["Array", "Dynamic Programming", "Breadth-First Search"],
+    "testCases": [
+      { "input": "[1,3,4]\n6", "output": "2" },
+      { "input": "[2]\n3", "output": "-1" },
+      { "input": "[1]\n0", "output": "0" }
+    ],
+    "hints": [
+      "Use dynamic programming.",
+      "dp[i] = minimum coins to make amount i",
+      "For each coin, update all amounts that can be made with it."
+    ],
+    "solution": {
+      "python": "def coinChange(coins, amount):\n    dp = [float('inf')] * (amount + 1)\n    dp[0] = 0\n    \n    for coin in coins:\n        for i in range(coin, amount + 1):\n            dp[i] = min(dp[i], dp[i - coin] + 1)\n    \n    return dp[amount] if dp[amount] != float('inf') else -1",
+      "javascript": "function coinChange(coins, amount) {\n    const dp = new Array(amount + 1).fill(Infinity);\n    dp[0] = 0;\n    \n    for (let coin of coins) {\n        for (let i = coin; i <= amount; i++) {\n            dp[i] = Math.min(dp[i], dp[i - coin] + 1);\n        }\n    }\n    \n    return dp[amount] === Infinity ? -1 : dp[amount];\n}"
+    }
+  },
+  {
+    "id": 27,
+    "title": "Number of Islands",
+    "difficulty": "medium",
+    "description": "Given an m x n 2D binary grid which represents a map of '1's (land) and '0's (water), return the number of islands. An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.",
+    "examples": [
+      {
+        "input": "grid = [[\"1\",\"1\",\"1\",\"1\",\"0\"],[\"1\",\"1\",\"0\",\"1\",\"0\"],[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"0\",\"0\",\"0\",\"0\",\"0\"]]",
+        "output": "1"
+      },
+      {
+        "input": "grid = [[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"0\",\"0\",\"1\",\"0\",\"0\"],[\"0\",\"0\",\"0\",\"1\",\"1\"]]",
+        "output": "3"
+      }
+    ],
+    "constraints": [
+      "m == grid.length",
+      "n == grid[i].length",
+      "1 <= m, n <= 300"
+    ],
+    "tags": ["Array", "Depth-First Search", "Breadth-First Search", "Union Find", "Matrix"],
+    "testCases": [
+      { "input": "[[\"1\",\"1\",\"1\",\"1\",\"0\"],[\"1\",\"1\",\"0\",\"1\",\"0\"],[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"0\",\"0\",\"0\",\"0\",\"0\"]]", "output": "1" },
+      { "input": "[[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"0\",\"0\",\"1\",\"0\",\"0\"],[\"0\",\"0\",\"0\",\"1\",\"1\"]]", "output": "3" },
+      { "input": "[[\"1\"]]", "output": "1" }
+    ],
+    "hints": [
+      "Use DFS to mark connected land cells.",
+      "For each unvisited '1', start a DFS and increment island count."
+    ],
+    "solution": {
+      "python": "def numIslands(grid):\n    if not grid:\n        return 0\n    \n    def dfs(i, j):\n        if (i < 0 or i >= len(grid) or j < 0 or j >= len(grid[0]) or \n            grid[i][j] == '0'):\n            return\n        \n        grid[i][j] = '0'  # Mark as visited\n        \n        # Explore all 4 directions\n        dfs(i+1, j)\n        dfs(i-1, j)\n        dfs(i, j+1)\n        dfs(i, j-1)\n    \n    count = 0\n    for i in range(len(grid)):\n        for j in range(len(grid[0])):\n            if grid[i][j] == '1':\n                count += 1\n                dfs(i, j)\n    \n    return count",
+      "javascript": "function numIslands(grid) {\n    if (!grid || grid.length === 0) return 0;\n    \n    function dfs(i, j) {\n        if (i < 0 || i >= grid.length || j < 0 || j >= grid[0].length || \n            grid[i][j] === '0') {\n            return;\n        }\n        \n        grid[i][j] = '0'; // Mark as visited\n        \n        // Explore all 4 directions\n        dfs(i + 1, j);\n        dfs(i - 1, j);\n        dfs(i, j + 1);\n        dfs(i, j - 1);\n    }\n    \n    let count = 0;\n    for (let i = 0; i < grid.length; i++) {\n        for (let j = 0; j < grid[0].length; j++) {\n            if (grid[i][j] === '1') {\n                count++;\n                dfs(i, j);\n            }\n        }\n    }\n    \n    return count;\n}"
+    }
   }
 ]

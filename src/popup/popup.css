@@ -353,7 +353,167 @@ button:active:not(:disabled) {
     min-width: 200px;
 }
 
-/* Dark mode styles (future enhancement) */
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #1f2937;
+    color: #f9fafb;
+}
+
+body.dark-mode header {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+}
+
+body.dark-mode main {
+    background-color: #1f2937;
+}
+
+/* Dark mode for cards and panels */
+body.dark-mode .bg-white,
+body.dark-mode .bg-gray-50,
+body.dark-mode .bg-gray-100 {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+}
+
+body.dark-mode .border-gray-200,
+body.dark-mode .border {
+    border-color: #4b5563 !important;
+}
+
+/* Dark mode for form elements */
+body.dark-mode select,
+body.dark-mode input {
+    background-color: #4b5563;
+    color: #f9fafb;
+    border-color: #6b7280;
+}
+
+body.dark-mode select:focus,
+body.dark-mode input:focus {
+    border-color: #3b82f6;
+    background-color: #374151;
+}
+
+/* Dark mode for problem tags */
+body.dark-mode .problem-tag {
+    background-color: #4b5563;
+    color: #d1d5db;
+}
+
+/* Dark mode for test cases */
+body.dark-mode .test-case {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+body.dark-mode .test-case.passed {
+    background-color: #065f46;
+    border-color: #10b981;
+}
+
+body.dark-mode .test-case.failed {
+    background-color: #7f1d1d;
+    border-color: #ef4444;
+}
+
+/* Dark mode for results */
+body.dark-mode #results-content {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+/* Dark mode for scrollbars */
+body.dark-mode ::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Dark mode for loading overlay */
+body.dark-mode .loading-overlay {
+    background: rgba(31, 41, 55, 0.9);
+}
+
+body.dark-mode .loading-text {
+    color: #d1d5db;
+}
+
+/* Dark mode for modals */
+body.dark-mode .modal-content {
+    background-color: #374151;
+    color: #f9fafb;
+}
+
+/* Dark mode for settings panel */
+body.dark-mode .settings-panel {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+/* Dark mode for text colors */
+body.dark-mode .text-gray-600,
+body.dark-mode .text-gray-700 {
+    color: #d1d5db !important;
+}
+
+body.dark-mode .text-gray-800,
+body.dark-mode .text-gray-900 {
+    color: #f9fafb !important;
+}
+
+/* Dark mode button hover states */
+body.dark-mode button:hover:not(.bg-blue-600):not(.bg-green-600):not(.bg-red-500):not(.bg-yellow-500):not(.bg-purple-500) {
+    background-color: #4b5563;
+}
+
+/* Dark mode for welcome screen */
+body.dark-mode #welcome-screen h2 {
+    color: #f9fafb;
+}
+
+body.dark-mode #welcome-screen p {
+    color: #d1d5db;
+}
+
+/* Auto dark mode detection */
 @media (prefers-color-scheme: dark) {
-    /* Dark mode styles will go here */
+    body {
+        background-color: #1f2937;
+        color: #f9fafb;
+    }
+}
+
+/* Problem browser styles */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.problem-card:hover {
+    transform: translateY(-1px);
+}
+
+/* Dark mode for problem cards */
+body.dark-mode .problem-card,
+body.dark-mode .bg-white {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+}
+
+body.dark-mode .problem-card h3 {
+    color: #f9fafb;
+}
+
+body.dark-mode .problem-card p {
+    color: #d1d5db;
 }

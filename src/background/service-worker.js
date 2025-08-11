@@ -41,7 +41,6 @@ async function initializeExtension() {
             when: getNextDailyChallenge()
         });
         
-        console.log('Extension initialized successfully');
     } catch (error) {
         console.error('Error initializing extension:', error);
     }
@@ -49,7 +48,6 @@ async function initializeExtension() {
 
 // Handle extension updates
 async function handleUpdate(previousVersion) {
-    console.log(`Updated from version ${previousVersion}`);
     
     // Migrate data if needed
     const data = await chrome.storage.local.get(null);
@@ -118,7 +116,6 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
 
 // Message handling from popup and content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Message received:', request);
     
     switch (request.action) {
         case 'executeCode':
@@ -173,7 +170,6 @@ async function handleCodeExecution(data) {
         
         const languageId = languageMap[language] || 71;
         
-        console.log(`Executing ${language} code with ${testCases.length} test cases...`);
         
         // Execute code for each test case with better error handling
         const results = await Promise.allSettled(
@@ -200,7 +196,6 @@ async function handleCodeExecution(data) {
         const passedCount = processedResults.filter(r => r.passed).length;
         const success = passedCount === processedResults.length;
         
-        console.log(`Execution complete: ${passedCount}/${processedResults.length} tests passed`);
         
         return {
             success,
@@ -242,7 +237,6 @@ async function retryWithBackoff(asyncFunction, maxRetries = 3, baseDelay = 1000)
             }
             
             const delay = baseDelay * Math.pow(2, attempt);
-            console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
@@ -304,7 +298,6 @@ async function executeTestCase(code, languageId, testCase) {
                 status: result.status.description
             };
         } catch (error) {
-            console.log('Judge0 API failed after retries, trying Piston API...', error.message);
             return await executePistonAPI(code, languageId, testCase);
         }
     } catch (error) {
@@ -417,9 +410,6 @@ async function executePistonAPI(code, languageId, testCase) {
 // Execute JavaScript code locally (enhanced fallback)
 async function executeJavaScriptLocally(code, testCase) {
     try {
-        console.log('Local execution - Input:', testCase.input);
-        console.log('Local execution - Expected:', testCase.output);
-        console.log('Local execution - Code:', code);
         
         // Parse test case input more intelligently
         let inputs = [];
@@ -442,7 +432,6 @@ async function executeJavaScriptLocally(code, testCase) {
             }
         }
         
-        console.log('Parsed inputs:', inputs);
         
         // Extract function name from code
         let functionName = null;
@@ -451,7 +440,6 @@ async function executeJavaScriptLocally(code, testCase) {
             functionName = functionMatch[1];
         }
         
-        console.log('Function name:', functionName);
         
         // Create execution context
         let func;
@@ -483,7 +471,9 @@ async function executeJavaScriptLocally(code, testCase) {
                 const funcNames = ['twoSum', 'reverseString', 'isPalindrome', 'maxSubArray', 'isValid', 
                                  'mergeTwoLists', 'maxProfit', 'climbStairs', 'longestCommonPrefix', 
                                  'search', 'maxArea', 'threeSum', 'removeDuplicates', 'plusOne', 
-                                 'rotate', 'singleNumber', 'intersect', 'solution', 'main'];
+                                 'rotate', 'singleNumber', 'intersect', 'isAnagram', 'groupAnagrams',
+                                 'containsDuplicate', 'productExceptSelf', 'maxDepth', 'isSameTree',
+                                 'invertTree', 'rob', 'coinChange', 'numIslands', 'solution', 'main'];
                 
                 for (const name of funcNames) {
                     if (typeof eval(name) === 'function') {
@@ -511,7 +501,6 @@ async function executeJavaScriptLocally(code, testCase) {
         
         const executionTime = Date.now() - startTime;
         
-        console.log('Execution output:', output);
         
         // Parse expected output
         let expected;
@@ -528,7 +517,6 @@ async function executeJavaScriptLocally(code, testCase) {
             }
         }
         
-        console.log('Expected output:', expected);
         
         // Smart comparison
         let passed = false;
@@ -547,7 +535,6 @@ async function executeJavaScriptLocally(code, testCase) {
             }
         }
         
-        console.log('Test passed:', passed);
         
         return {
             passed,

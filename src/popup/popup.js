@@ -6,14 +6,18 @@ const elements = {
     welcomeScreen: document.getElementById('welcome-screen'),
     problemView: document.getElementById('problem-view'),
     statsView: document.getElementById('stats-view'),
+    browserView: document.getElementById('browser-view'),
     getProblemBtn: document.getElementById('get-problem-btn'),
+    browseProblemBtn: document.getElementById('browse-problems-btn'),
     settingsBtn: document.getElementById('settings-btn'),
+    darkModeToggle: document.getElementById('dark-mode-toggle'),
     runCodeBtn: document.getElementById('run-code-btn'),
     submitBtn: document.getElementById('submit-btn'),
     hintBtn: document.getElementById('hint-btn'),
     solutionBtn: document.getElementById('solution-btn'),
     resetCodeBtn: document.getElementById('reset-code-btn'),
     backBtn: document.getElementById('back-btn'),
+    browserBackBtn: document.getElementById('browser-back-btn'),
     problemTitle: document.getElementById('problem-title'),
     problemDifficulty: document.getElementById('problem-difficulty'),
     problemDescription: document.getElementById('problem-description'),
@@ -23,13 +27,28 @@ const elements = {
     testCases: document.getElementById('test-cases'),
     results: document.getElementById('results'),
     resultsContent: document.getElementById('results-content'),
-    streak: document.getElementById('streak')
+    streak: document.getElementById('streak'),
+    body: document.getElementById('popup-body'),
+    problemSearch: document.getElementById('problem-search'),
+    clearSearch: document.getElementById('clear-search'),
+    categoryFilter: document.getElementById('category-filter'),
+    browserSearch: document.getElementById('browser-search'),
+    browserDifficulty: document.getElementById('browser-difficulty'),
+    browserCategory: document.getElementById('browser-category'),
+    problemList: document.getElementById('problem-list'),
+    getProblemText: document.getElementById('get-problem-text')
 };
 
 // State
 let currentProblem = null;
 let currentCode = '';
 let selectedDifficulty = 'random';
+let selectedCategory = '';
+let searchQuery = '';
+let isDarkMode = false;
+let codeEditor = null;
+let allProblems = [];
+let filteredProblems = [];
 let userStats = {
     problemsSolved: 0,
     totalAttempts: 0,
@@ -39,10 +58,67 @@ let userStats = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    loadUserSettings();
     loadUserStats();
+    loadAllProblems();
     setupEventListeners();
     initializeCodeEditor();
 });
+
+// Load user settings from Chrome storage
+async function loadUserSettings() {
+    try {
+        const data = await chrome.storage.local.get(['settings']);
+        const settings = data.settings || { 
+            theme: 'light', 
+            defaultLanguage: 'python',
+            autoSave: true,
+            notifications: true
+        };
+        
+        isDarkMode = settings.theme === 'dark' || 
+                    (settings.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        updateTheme();
+        
+    } catch (error) {
+        console.error('Error loading user settings:', error);
+    }
+}
+
+// Update theme based on current mode
+function updateTheme() {
+    if (isDarkMode) {
+        elements.body.classList.add('dark-mode');
+        elements.darkModeToggle.textContent = '☀️';
+        elements.darkModeToggle.title = 'Switch to Light Mode';
+    } else {
+        elements.body.classList.remove('dark-mode');
+        elements.darkModeToggle.textContent = '🌙';
+        elements.darkModeToggle.title = 'Switch to Dark Mode';
+    }
+    
+    // Update code editor theme if it exists
+    if (codeEditor) {
+        codeEditor.setDarkMode(isDarkMode);
+    }
+}
+
+// Toggle dark mode
+async function toggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    updateTheme();
+    
+    // Save theme preference
+    try {
+        const data = await chrome.storage.local.get(['settings']);
+        const settings = data.settings || {};
+        settings.theme = isDarkMode ? 'dark' : 'light';
+        await chrome.storage.local.set({ settings });
+    } catch (error) {
+        console.error('Error saving theme preference:', error);
+    }
+}
 
 // Load user statistics from Chrome storage
 async function loadUserStats() {
@@ -66,10 +142,75 @@ async function saveUserStats() {
     }
 }
 
+// Load all problems from local file
+async function loadAllProblems() {
+    try {
+        const response = await fetch(chrome.runtime.getURL('src/problems/problems.json'));
+        allProblems = await response.json();
+        filteredProblems = [...allProblems];
+    } catch (error) {
+        console.error('Error loading problems:', error);
+        allProblems = [];
+        filteredProblems = [];
+    }
+}
+
+// Filter problems based on current criteria
+function filterProblems() {
+    filteredProblems = allProblems.filter(problem => {
+        // Search query filter
+        if (searchQuery && !problem.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+            !problem.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+            return false;
+        }
+        
+        // Difficulty filter
+        if (selectedDifficulty !== 'random' && selectedDifficulty !== '' && 
+            problem.difficulty !== selectedDifficulty) {
+            return false;
+        }
+        
+        // Category filter
+        if (selectedCategory && !problem.tags.some(tag => 
+            tag.toLowerCase() === selectedCategory.toLowerCase())) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Update button text based on filters
+    updateGetProblemButtonText();
+    
+}
+
+// Update the "Get Problem" button text based on current filters
+function updateGetProblemButtonText() {
+    let text = 'Get Problem';
+    
+    if (searchQuery) {
+        text = `Get Matching (${filteredProblems.length})`;
+    } else if (selectedDifficulty !== 'random' && selectedDifficulty !== '') {
+        text = `Get ${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)} (${filteredProblems.length})`;
+    } else if (selectedCategory) {
+        text = `Get ${selectedCategory} (${filteredProblems.length})`;
+    } else {
+        text = `Get Random (${filteredProblems.length})`;
+    }
+    
+    elements.getProblemText.textContent = text;
+}
+
 // Setup event listeners
 function setupEventListeners() {
     // Get problem button
-    elements.getProblemBtn.addEventListener('click', loadRandomProblem);
+    elements.getProblemBtn.addEventListener('click', loadFilteredProblem);
+    
+    // Browse problems button
+    elements.browseProblemBtn.addEventListener('click', showBrowserView);
+    
+    // Dark mode toggle
+    elements.darkModeToggle.addEventListener('click', toggleDarkMode);
     
     // Difficulty buttons
     document.querySelectorAll('.difficulty-btn').forEach(btn => {
@@ -77,10 +218,61 @@ function setupEventListeners() {
             selectedDifficulty = e.target.dataset.difficulty;
             // Update button styles
             document.querySelectorAll('.difficulty-btn').forEach(b => {
-                b.classList.remove('ring-2', 'ring-offset-2');
+                b.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-1');
             });
-            e.target.classList.add('ring-2', 'ring-offset-2');
+            e.target.classList.add('ring-2', 'ring-offset-1');
+            filterProblems();
         });
+    });
+    
+    // Search input
+    elements.problemSearch.addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        if (searchQuery) {
+            elements.clearSearch.classList.remove('hidden');
+        } else {
+            elements.clearSearch.classList.add('hidden');
+        }
+        filterProblems();
+    });
+    
+    // Clear search button
+    elements.clearSearch.addEventListener('click', () => {
+        elements.problemSearch.value = '';
+        searchQuery = '';
+        elements.clearSearch.classList.add('hidden');
+        filterProblems();
+    });
+    
+    // Category filter
+    elements.categoryFilter.addEventListener('change', (e) => {
+        selectedCategory = e.target.value;
+        filterProblems();
+    });
+    
+    // Browser view search and filters
+    elements.browserSearch.addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        filterProblems();
+        updateProblemList();
+    });
+    
+    elements.browserDifficulty.addEventListener('change', (e) => {
+        selectedDifficulty = e.target.value || 'random';
+        filterProblems();
+        updateProblemList();
+    });
+    
+    elements.browserCategory.addEventListener('change', (e) => {
+        selectedCategory = e.target.value;
+        filterProblems();
+        updateProblemList();
+    });
+    
+    // Browser back button
+    elements.browserBackBtn.addEventListener('click', () => {
+        elements.browserView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
     });
     
     // Code execution buttons
@@ -104,8 +296,12 @@ function setupEventListeners() {
 function initializeCodeEditor() {
     // Initialize the simple code editor
     if (window.SimpleCodeEditor) {
-        window.codeEditor = new SimpleCodeEditor(elements.codeEditor, 'python');
-        window.codeEditor.setupKeyboardShortcuts();
+        codeEditor = new SimpleCodeEditor(elements.codeEditor, 'python');
+        window.codeEditor = codeEditor; // Also set as global for backward compatibility
+        codeEditor.setupKeyboardShortcuts();
+        
+        // Apply current theme to editor
+        codeEditor.setDarkMode(isDarkMode);
     } else {
         // Fallback to contenteditable
         elements.codeEditor.contentEditable = true;
@@ -116,6 +312,106 @@ function initializeCodeEditor() {
 }
 
 // Load a random problem
+// Load a problem from the filtered set
+async function loadFilteredProblem() {
+    try {
+        if (filteredProblems.length === 0) {
+            showError('No problems match your current filters. Try adjusting your search or filters.');
+            return;
+        }
+        
+        // Show loading state
+        elements.getProblemBtn.disabled = true;
+        elements.getProblemBtn.innerHTML = '<span class="spinner"></span> Loading...';
+        
+        // Get random problem from filtered set
+        const randomIndex = Math.floor(Math.random() * filteredProblems.length);
+        const problem = filteredProblems[randomIndex];
+        
+        await displayProblem(problem);
+        
+    } catch (error) {
+        console.error('Error loading filtered problem:', error);
+        showError('Failed to load problem. Please try again.');
+    } finally {
+        elements.getProblemBtn.disabled = false;
+        updateGetProblemButtonText();
+    }
+}
+
+// Show the problem browser view
+function showBrowserView() {
+    elements.welcomeScreen.classList.add('hidden');
+    elements.browserView.classList.remove('hidden');
+    
+    // Initialize browser filters with current values
+    elements.browserSearch.value = searchQuery;
+    elements.browserDifficulty.value = selectedDifficulty === 'random' ? '' : selectedDifficulty;
+    elements.browserCategory.value = selectedCategory;
+    
+    // Update the problem list
+    updateProblemList();
+}
+
+// Update the problem list in browser view
+function updateProblemList() {
+    const container = elements.problemList;
+    container.innerHTML = '';
+    
+    if (filteredProblems.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">No problems match your filters</div>';
+        return;
+    }
+    
+    // Sort problems by difficulty and title
+    const sortedProblems = filteredProblems.sort((a, b) => {
+        const diffOrder = { easy: 1, medium: 2, hard: 3 };
+        if (diffOrder[a.difficulty] !== diffOrder[b.difficulty]) {
+            return diffOrder[a.difficulty] - diffOrder[b.difficulty];
+        }
+        return a.title.localeCompare(b.title);
+    });
+    
+    sortedProblems.forEach(problem => {
+        const problemCard = document.createElement('div');
+        problemCard.className = 'bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer';
+        
+        const difficultyClass = `difficulty-${problem.difficulty}`;
+        const tagElements = problem.tags.slice(0, 3).map(tag => 
+            `<span class="problem-tag">${tag}</span>`
+        ).join(' ');
+        
+        problemCard.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-medium text-sm">${problem.title}</h3>
+                <span class="px-2 py-1 text-xs rounded ${difficultyClass}">${problem.difficulty}</span>
+            </div>
+            <p class="text-xs text-gray-600 mb-2 line-clamp-2">${problem.description.substring(0, 80)}...</p>
+            <div class="flex flex-wrap gap-1">
+                ${tagElements}
+            </div>
+        `;
+        
+        problemCard.addEventListener('click', () => {
+            loadSpecificProblem(problem);
+        });
+        
+        container.appendChild(problemCard);
+    });
+}
+
+// Load a specific problem from the browser
+async function loadSpecificProblem(problem) {
+    try {
+        await displayProblem(problem);
+        // Hide browser view and show problem view
+        elements.browserView.classList.add('hidden');
+    } catch (error) {
+        console.error('Error loading specific problem:', error);
+        showError('Failed to load problem. Please try again.');
+    }
+}
+
 async function loadRandomProblem() {
     try {
         // Show loading state
