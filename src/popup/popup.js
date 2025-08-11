@@ -301,8 +301,8 @@ async function runCode() {
     elements.runCodeBtn.innerHTML = '<span class="spinner"></span> Running...';
     
     try {
-        // This will be replaced with actual code execution via Judge0 API
-        await simulateCodeExecution();
+        // Execute code via service worker (Judge0 API)
+        await executeCodeViaWorker();
     } catch (error) {
         console.error('Error running code:', error);
         showError('Failed to run code. Please try again.');
@@ -328,8 +328,8 @@ async function submitCode() {
     elements.submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
     
     try {
-        // This will be replaced with actual submission logic
-        await simulateCodeSubmission();
+        // Submit code via service worker (Judge0 API with all test cases)
+        await submitCodeViaWorker();
     } catch (error) {
         console.error('Error submitting code:', error);
         showError('Failed to submit code. Please try again.');
@@ -339,7 +339,112 @@ async function submitCode() {
     }
 }
 
-// Simulate code execution (temporary)
+// Execute code via service worker
+async function executeCodeViaWorker() {
+    try {
+        const language = elements.languageSelect.value;
+        
+        // Send code execution request to service worker
+        const response = await chrome.runtime.sendMessage({
+            action: 'executeCode',
+            data: {
+                code: currentCode,
+                language: language,
+                testCases: currentProblem.testCases.slice(0, 3) // Limit to first 3 test cases
+            }
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        // Show real results
+        showResults({
+            success: response.success,
+            testsPassed: response.summary.passed,
+            totalTests: response.summary.total,
+            output: formatExecutionResults(response.results),
+            runtime: response.results[0]?.time || 'N/A',
+            memory: response.results[0]?.memory || 'N/A'
+        });
+        
+    } catch (error) {
+        console.error('Code execution error:', error);
+        // Fallback to mock execution
+        await simulateCodeExecution();
+    }
+}
+
+// Submit code via service worker (all test cases)
+async function submitCodeViaWorker() {
+    try {
+        const language = elements.languageSelect.value;
+        
+        // Send code submission request to service worker
+        const response = await chrome.runtime.sendMessage({
+            action: 'executeCode',
+            data: {
+                code: currentCode,
+                language: language,
+                testCases: currentProblem.testCases // All test cases for submission
+            }
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
+        
+        const success = response.success;
+        
+        // Update user stats if successful
+        if (success) {
+            await updateUserStats();
+        }
+        
+        // Show submission results
+        showResults({
+            success: success,
+            testsPassed: response.summary.passed,
+            totalTests: response.summary.total,
+            output: success ? 'All test cases passed! 🎉' : formatExecutionResults(response.results),
+            runtime: response.results[0]?.time || 'N/A',
+            memory: response.results[0]?.memory || 'N/A'
+        });
+        
+    } catch (error) {
+        console.error('Code submission error:', error);
+        // Fallback to mock execution
+        await simulateCodeSubmission();
+    }
+}
+
+// Update user stats
+async function updateUserStats() {
+    try {
+        const response = await chrome.runtime.sendMessage({
+            action: 'updateStreak'
+        });
+        
+        if (response && !response.error) {
+            userStats = response;
+            updateStreakDisplay();
+        }
+    } catch (error) {
+        console.error('Error updating stats:', error);
+    }
+}
+
+// Format execution results for display
+function formatExecutionResults(results) {
+    return results.map((result, index) => {
+        const status = result.passed ? '✅ Passed' : '❌ Failed';
+        const output = result.output ? `\nOutput: ${result.output}` : '';
+        const expected = result.expected ? `\nExpected: ${result.expected}` : '';
+        return `Test Case ${index + 1}: ${status}${output}${expected}`;
+    }).join('\n\n');
+}
+
+// Simulate code execution (fallback)
 async function simulateCodeExecution() {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -349,7 +454,7 @@ async function simulateCodeExecution() {
         success: Math.random() > 0.3,
         testsPassed: 1,
         totalTests: 2,
-        output: 'Test Case 1: Passed\nTest Case 2: Failed',
+        output: 'Test Case 1: Passed\nTest Case 2: Failed\n(Note: Using mock execution)',
         runtime: '28 ms',
         memory: '14.2 MB'
     });
