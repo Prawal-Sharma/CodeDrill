@@ -609,6 +609,8 @@ function showStats() {
     document.querySelector('#stats-view .text-purple-600').textContent = userStats.bestStreak;
 }
 
+}
+
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
