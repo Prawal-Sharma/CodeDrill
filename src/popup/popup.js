@@ -100,13 +100,19 @@ function setupEventListeners() {
     elements.languageSelect.addEventListener('change', updateCodeTemplate);
 }
 
-// Initialize code editor (basic for now, will integrate CodeMirror later)
+// Initialize code editor with SimpleCodeEditor
 function initializeCodeEditor() {
-    // Temporary: Use contenteditable div
-    elements.codeEditor.contentEditable = true;
-    elements.codeEditor.addEventListener('input', (e) => {
-        currentCode = e.target.innerText;
-    });
+    // Initialize the simple code editor
+    if (window.SimpleCodeEditor) {
+        window.codeEditor = new SimpleCodeEditor(elements.codeEditor, 'python');
+        window.codeEditor.setupKeyboardShortcuts();
+    } else {
+        // Fallback to contenteditable
+        elements.codeEditor.contentEditable = true;
+        elements.codeEditor.addEventListener('input', (e) => {
+            currentCode = e.target.innerText;
+        });
+    }
 }
 
 // Load a random problem
@@ -133,11 +139,24 @@ async function loadRandomProblem() {
     }
 }
 
-// Fetch random problem (temporary implementation)
+// Fetch random problem from service worker
 async function fetchRandomProblem(difficulty) {
-    // Temporary: Return a sample problem
-    // This will be replaced with actual problem fetching logic
-    return {
+    try {
+        // Send message to service worker to fetch problem
+        const response = await chrome.runtime.sendMessage({
+            action: 'fetchProblem',
+            difficulty: difficulty
+        });
+        
+        if (response && response.error) {
+            throw new Error(response.error);
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('Error fetching problem from service worker:', error);
+        // Fallback to local sample problem
+        return {
         id: 1,
         title: 'Two Sum',
         difficulty: 'easy',
@@ -244,9 +263,13 @@ function displayTestCases(testCases) {
 // Update code template based on selected language
 function updateCodeTemplate() {
     const language = elements.languageSelect.value;
-    let template = '';
     
-    if (currentProblem) {
+    if (currentProblem && window.codeEditor) {
+        window.codeEditor.updateTemplate(currentProblem.title, language);
+        currentCode = window.codeEditor.getValue();
+    } else if (currentProblem) {
+        // Fallback for contenteditable
+        let template = '';
         if (language === 'python') {
             template = `def twoSum(nums, target):
     # Your code here
@@ -257,14 +280,18 @@ function updateCodeTemplate() {
     
 }`;
         }
+        elements.codeEditor.innerText = template;
+        currentCode = template;
     }
-    
-    elements.codeEditor.innerText = template;
-    currentCode = template;
 }
 
 // Run code against test cases
 async function runCode() {
+    // Get code from editor
+    if (window.codeEditor) {
+        currentCode = window.codeEditor.getValue();
+    }
+    
     if (!currentCode.trim()) {
         showError('Please write some code first!');
         return;
@@ -287,6 +314,11 @@ async function runCode() {
 
 // Submit code for final validation
 async function submitCode() {
+    // Get code from editor
+    if (window.codeEditor) {
+        currentCode = window.codeEditor.getValue();
+    }
+    
     if (!currentCode.trim()) {
         showError('Please write some code first!');
         return;
