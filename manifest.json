@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Code Drill - LeetCode Practice",
+  "version": "1.0.0",
+  "description": "Practice coding interview problems without leaving your browser. Get random LeetCode-style problems, solve them with a built-in editor, and track your progress.",
+  
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  
+  "host_permissions": [
+    "https://ce.judge0.com/*",
+    "https://emkc.org/*"
+  ],
+  
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    },
+    "default_title": "Code Drill - Practice Coding"
+  },
+  
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/*", "src/problems/problems.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
