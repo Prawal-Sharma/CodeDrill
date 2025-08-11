@@ -20,7 +20,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="p-4">
+    <main class="p-4" style="height: calc(100vh - 80px); overflow-y: auto;">
         <!-- Welcome Screen -->
         <div id="welcome-screen" class="text-center py-8">
             <h2 class="text-2xl font-semibold mb-4">Ready to Practice?</h2>
@@ -54,7 +54,7 @@
             </div>
 
             <!-- Problem Description -->
-            <div id="problem-description" class="mb-4 p-3 bg-white rounded border border-gray-200 max-h-40 overflow-y-auto text-sm">
+            <div id="problem-description" class="mb-4 p-3 bg-white rounded border border-gray-200 max-h-32 overflow-y-auto text-sm" style="min-height: 80px;">
             </div>
 
             <!-- Code Editor Area -->
@@ -66,7 +66,7 @@
                     </select>
                     <button id="reset-code-btn" class="text-sm text-gray-600 hover:text-gray-800">Reset</button>
                 </div>
-                <div id="code-editor" class="h-48 border rounded bg-white"></div>
+                <div id="code-editor" class="border rounded bg-white" style="height: 180px; overflow: hidden;"></div>
             </div>
 
             <!-- Test Cases -->

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Base64 Icons for Code Drill</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .output {
+            margin: 20px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Code Drill Icon Generator - Base64</h1>
+    <p>Click the button to generate base64 encoded icons.</p>
+    
+    <button onclick="generateAllIcons()">Generate All Icons</button>
+    <button onclick="downloadAllIcons()">Download All Icons</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#3B82F6');
+            gradient.addColorStop(1, '#8B5CF6');
+            
+            // Draw rounded rectangle
+            const radius = size * 0.15;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Draw text "CD"
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.35}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('CD', size / 2, size / 2);
+            
+            return canvas;
+        }
+        
+        function generateAllIcons() {
+            const sizes = [16, 32, 48, 128];
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            
+            sizes.forEach(size => {
+                const canvas = createIcon(size);
+                const base64 = canvas.toDataURL('image/png');
+                
+                const div = document.createElement('div');
+                div.className = 'output';
+                div.innerHTML = `
+                    <h3>icon-${size}.png (${size}x${size})</h3>
+                    <img src="${base64}" style="border: 1px solid #ddd; margin: 10px;">
+                    <br>
+                    <button onclick="downloadIcon(${size})">Download icon-${size}.png</button>
+                `;
+                output.appendChild(div);
+                
+                // Store in window for download
+                window[`icon${size}`] = base64;
+            });
+        }
+        
+        function downloadIcon(size) {
+            const base64 = window[`icon${size}`];
+            const link = document.createElement('a');
+            link.href = base64;
+            link.download = `icon-${size}.png`;
+            link.click();
+        }
+        
+        function downloadAllIcons() {
+            [16, 32, 48, 128].forEach(size => {
+                setTimeout(() => downloadIcon(size), size * 10);
+            });
+        }
+        
+        // Auto-generate on load
+        window.onload = generateAllIcons;
+    </script>
+</body>
+</html>

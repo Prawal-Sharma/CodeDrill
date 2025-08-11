@@ -34,7 +34,7 @@ class SimpleCodeEditor {
         style.textContent = `
             .code-textarea {
                 width: 100%;
-                height: 200px;
+                height: 180px;
                 font-family: 'Courier New', Courier, monospace;
                 font-size: 13px;
                 padding: 10px;
