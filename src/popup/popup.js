@@ -207,6 +207,8 @@ async function fetchRandomProblem(difficulty) {
     };
 }
 
+}
+
 // Display problem in the UI
 function displayProblem(problem) {
     elements.problemTitle.textContent = problem.title;
@@ -285,8 +287,21 @@ function updateCodeTemplate() {
     }
 }
 
+// Debounce function to prevent rapid clicks
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Run code against test cases
-async function runCode() {
+const runCode = debounce(async function() {
     // Get code from editor
     if (window.codeEditor) {
         currentCode = window.codeEditor.getValue();
@@ -297,8 +312,13 @@ async function runCode() {
         return;
     }
     
+    // Enhanced loading state
+    elements.runCodeBtn.classList.add('loading');
     elements.runCodeBtn.disabled = true;
-    elements.runCodeBtn.innerHTML = '<span class="spinner"></span> Running...';
+    const originalText = elements.runCodeBtn.textContent;
+    
+    // Add progress indicator
+    showProgressIndicator('Executing code...');
     
     try {
         // Execute code via service worker (Judge0 API)
@@ -307,13 +327,15 @@ async function runCode() {
         console.error('Error running code:', error);
         showError('Failed to run code. Please try again.');
     } finally {
+        elements.runCodeBtn.classList.remove('loading');
         elements.runCodeBtn.disabled = false;
-        elements.runCodeBtn.innerHTML = 'Run Code';
+        elements.runCodeBtn.textContent = originalText;
+        hideProgressIndicator();
     }
-}
+}, 500); // 500ms debounce
 
 // Submit code for final validation
-async function submitCode() {
+const submitCode = debounce(async function() {
     // Get code from editor
     if (window.codeEditor) {
         currentCode = window.codeEditor.getValue();
@@ -324,8 +346,13 @@ async function submitCode() {
         return;
     }
     
+    // Enhanced loading state
+    elements.submitBtn.classList.add('loading');
     elements.submitBtn.disabled = true;
-    elements.submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+    const originalText = elements.submitBtn.textContent;
+    
+    // Add progress indicator
+    showProgressIndicator('Submitting solution...');
     
     try {
         // Submit code via service worker (Judge0 API with all test cases)
@@ -334,10 +361,12 @@ async function submitCode() {
         console.error('Error submitting code:', error);
         showError('Failed to submit code. Please try again.');
     } finally {
+        elements.submitBtn.classList.remove('loading');
         elements.submitBtn.disabled = false;
-        elements.submitBtn.innerHTML = 'Submit';
+        elements.submitBtn.textContent = originalText;
+        hideProgressIndicator();
     }
-}
+}, 500); // 500ms debounce
 
 // Execute code via service worker
 async function executeCodeViaWorker() {
@@ -410,6 +439,11 @@ async function submitCodeViaWorker() {
             runtime: response.results[0]?.time || 'N/A',
             memory: response.results[0]?.memory || 'N/A'
         });
+        
+        // Show success notification if all tests passed
+        if (success) {
+            showSuccess('Solution accepted! Great job! 🎉');
+        }
         
     } catch (error) {
         console.error('Code submission error:', error);
@@ -576,6 +610,47 @@ function showError(message) {
     }, 3000);
 }
 
+// Show progress indicator
+function showProgressIndicator(message = 'Loading...') {
+    // Remove existing indicator
+    hideProgressIndicator();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay fade-in';
+    overlay.id = 'progress-indicator';
+    overlay.innerHTML = `
+        <div class="loading-content">
+            <div class="progress-bar">
+                <div class="progress-indeterminate"></div>
+            </div>
+            <div class="loading-text">${message}</div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+// Hide progress indicator
+function hideProgressIndicator() {
+    const indicator = document.getElementById('progress-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// Show success message
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg fade-in';
+    successDiv.textContent = message;
+    
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 3000);
+}
+
 // Update streak display
 function updateStreakDisplay() {
     elements.streak.textContent = `🔥 ${userStats.currentStreak}`;
@@ -607,8 +682,6 @@ function showStats() {
             : '0%';
     document.querySelector('#stats-view .text-yellow-600').textContent = userStats.currentStreak;
     document.querySelector('#stats-view .text-purple-600').textContent = userStats.bestStreak;
-}
-
 }
 
 // Export for testing

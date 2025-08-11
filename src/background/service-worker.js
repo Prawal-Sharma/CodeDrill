@@ -155,6 +155,14 @@ async function handleCodeExecution(data) {
     const { code, language, testCases } = data;
     
     try {
+        // Validate input
+        if (!code || !code.trim()) {
+            throw new Error('Code is required');
+        }
+        if (!testCases || testCases.length === 0) {
+            throw new Error('Test cases are required');
+        }
+        
         // Map language to Judge0 language ID
         const languageMap = {
             'python': 71,      // Python 3.8.1
@@ -165,28 +173,92 @@ async function handleCodeExecution(data) {
         
         const languageId = languageMap[language] || 71;
         
-        // Execute code for each test case
-        const results = await Promise.all(
+        console.log(`Executing ${language} code with ${testCases.length} test cases...`);
+        
+        // Execute code for each test case with better error handling
+        const results = await Promise.allSettled(
             testCases.map(testCase => executeTestCase(code, languageId, testCase))
         );
         
+        // Process results, handling failures gracefully
+        const processedResults = results.map((result, index) => {
+            if (result.status === 'fulfilled') {
+                return result.value;
+            } else {
+                console.error(`Test case ${index + 1} failed:`, result.reason);
+                return {
+                    passed: false,
+                    output: `Execution failed: ${result.reason.message}`,
+                    expected: testCases[index].output,
+                    time: '0ms',
+                    memory: 'N/A',
+                    status: 'Error'
+                };
+            }
+        });
+        
+        const passedCount = processedResults.filter(r => r.passed).length;
+        const success = passedCount === processedResults.length;
+        
+        console.log(`Execution complete: ${passedCount}/${processedResults.length} tests passed`);
+        
         return {
-            success: results.every(r => r.passed),
-            results,
+            success,
+            results: processedResults,
             summary: {
-                passed: results.filter(r => r.passed).length,
-                total: results.length
+                passed: passedCount,
+                total: processedResults.length
             }
         };
     } catch (error) {
         console.error('Code execution error:', error);
-        throw error;
+        return {
+            success: false,
+            results: [{
+                passed: false,
+                output: `System Error: ${error.message}`,
+                expected: 'N/A',
+                time: '0ms',
+                memory: 'N/A',
+                status: 'System Error'
+            }],
+            summary: { passed: 0, total: 1 }
+        };
+    }
+}
+
+// Rate limiting state
+let lastApiCall = 0;
+const API_CALL_DELAY = 1000; // 1 second between API calls
+
+// Retry with exponential backoff
+async function retryWithBackoff(asyncFunction, maxRetries = 3, baseDelay = 1000) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            return await asyncFunction();
+        } catch (error) {
+            if (attempt === maxRetries - 1) {
+                throw error; // Last attempt, throw the error
+            }
+            
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.log(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
 }
 
 // Execute a single test case
 async function executeTestCase(code, languageId, testCase) {
     try {
+        // Rate limiting - ensure minimum delay between API calls
+        const now = Date.now();
+        const timeSinceLastCall = now - lastApiCall;
+        if (timeSinceLastCall < API_CALL_DELAY) {
+            await new Promise(resolve => setTimeout(resolve, API_CALL_DELAY - timeSinceLastCall));
+        }
+        lastApiCall = Date.now();
+        
         // Prepare submission for Judge0 API
         const submission = {
             source_code: code,
@@ -197,35 +269,46 @@ async function executeTestCase(code, languageId, testCase) {
             memory_limit: 128000
         };
         
-        // Submit to Judge0 API (using the free CE endpoint)
-        const response = await fetch('https://ce.judge0.com/submissions?wait=true', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(submission)
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Judge0 API error: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // Process result
-        const passed = result.status.id === 3; // Accepted
-        const output = result.stdout || result.stderr || result.compile_output || '';
-        
-        return {
-            passed,
-            output: output.trim(),
-            expected: testCase.output,
-            time: result.time,
-            memory: result.memory,
-            status: result.status.description
+        // Try Judge0 API first with retry logic
+        const tryJudge0 = async () => {
+            const response = await fetch('https://ce.judge0.com/submissions?wait=true&base64_encoded=false', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-RapidAPI-Host': 'ce.judge0.com'
+                },
+                body: JSON.stringify(submission)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Judge0 API error: ${response.status} ${response.statusText}`);
+            }
+            
+            return response;
         };
+        
+        try {
+            const response = await retryWithBackoff(tryJudge0, 2, 1000);
+            const result = await response.json();
+            
+            // Process Judge0 result
+            const passed = result.status.id === 3; // Accepted
+            const output = result.stdout || result.stderr || result.compile_output || '';
+            
+            return {
+                passed,
+                output: output.trim(),
+                expected: testCase.output,
+                time: result.time,
+                memory: result.memory,
+                status: result.status.description
+            };
+        } catch (error) {
+            console.log('Judge0 API failed after retries, trying Piston API...', error.message);
+            return await executePistonAPI(code, languageId, testCase);
+        }
     } catch (error) {
-        // Fallback to local execution for JavaScript
+        // Final fallback to local execution for JavaScript
         if (languageId === 63) {
             return executeJavaScriptLocally(code, testCase);
         }
@@ -233,30 +316,252 @@ async function executeTestCase(code, languageId, testCase) {
     }
 }
 
-// Execute JavaScript code locally (fallback)
+// Execute code using Piston API (reliable fallback)
+async function executePistonAPI(code, languageId, testCase) {
+    // Rate limiting for Piston API
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < API_CALL_DELAY) {
+        await new Promise(resolve => setTimeout(resolve, API_CALL_DELAY - timeSinceLastCall));
+    }
+    lastApiCall = Date.now();
+    
+    const tryPiston = async () => {
+        // Map Judge0 language IDs to Piston language names
+        const pistonLanguageMap = {
+            71: 'python',      // Python 3.8.1
+            63: 'javascript',  // JavaScript (Node.js)
+            62: 'java',        // Java
+            54: 'cpp'          // C++
+        };
+        
+        const language = pistonLanguageMap[languageId] || 'python';
+        
+        // Prepare Piston API request
+        const pistonRequest = {
+            language: language,
+            version: '*', // Use latest version
+            files: [
+                {
+                    name: `main.${language === 'python' ? 'py' : language === 'javascript' ? 'js' : language === 'cpp' ? 'cpp' : 'java'}`,
+                    content: code
+                }
+            ],
+            stdin: testCase.input
+        };
+        
+        // Submit to Piston API
+        const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(pistonRequest)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Piston API error: ${response.status} ${response.statusText}`);
+        }
+        
+        return response;
+    };
+    
+    try {
+        const response = await retryWithBackoff(tryPiston, 2, 2000); // Longer delay for Piston
+        const result = await response.json();
+        
+        // Process Piston result
+        const output = result.run.stdout || result.run.stderr || '';
+        
+        // Smart output comparison for Piston
+        let passed = false;
+        let expected;
+        
+        try {
+            expected = JSON.parse(testCase.output);
+            const parsedOutput = JSON.parse(output.trim());
+            passed = JSON.stringify(parsedOutput) === JSON.stringify(expected);
+        } catch {
+            // Fallback to string comparison
+            passed = output.trim() === testCase.output.trim();
+        }
+        
+        return {
+            passed,
+            output: output.trim(),
+            expected: testCase.output,
+            time: `${result.run.time || 0}ms`,
+            memory: 'N/A',
+            status: result.run.code === 0 ? (passed ? 'Accepted' : 'Wrong Answer') : 'Runtime Error'
+        };
+        
+    } catch (error) {
+        console.error('Piston API failed after retries:', error);
+        
+        // Ultimate fallback for JavaScript
+        if (languageId === 63) {
+            return executeJavaScriptLocally(code, testCase);
+        }
+        
+        return {
+            passed: false,
+            output: `Piston API Error: ${error.message}`,
+            expected: testCase.output,
+            time: '0ms',
+            memory: 'N/A',
+            status: 'API Error'
+        };
+    }
+}
+
+// Execute JavaScript code locally (enhanced fallback)
 async function executeJavaScriptLocally(code, testCase) {
     try {
-        // Create a sandboxed function
-        const func = new Function('input', `
-            ${code}
-            return main(input);
-        `);
+        console.log('Local execution - Input:', testCase.input);
+        console.log('Local execution - Expected:', testCase.output);
+        console.log('Local execution - Code:', code);
         
-        const output = func(testCase.input);
-        const passed = JSON.stringify(output) === JSON.stringify(testCase.output);
+        // Parse test case input more intelligently
+        let inputs = [];
+        const inputLines = testCase.input.trim().split('\n');
+        
+        // Parse each line as a separate parameter
+        for (const line of inputLines) {
+            try {
+                // Try to parse as JSON
+                inputs.push(JSON.parse(line));
+            } catch {
+                // If not JSON, treat as string (remove quotes if present)
+                const trimmed = line.trim();
+                if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+                    (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+                    inputs.push(trimmed.slice(1, -1));
+                } else {
+                    inputs.push(trimmed);
+                }
+            }
+        }
+        
+        console.log('Parsed inputs:', inputs);
+        
+        // Extract function name from code
+        let functionName = null;
+        const functionMatch = code.match(/function\s+(\w+)/);
+        if (functionMatch) {
+            functionName = functionMatch[1];
+        }
+        
+        console.log('Function name:', functionName);
+        
+        // Create execution context
+        let func;
+        let output;
+        
+        if (functionName) {
+            // Function declaration - call with parsed parameters
+            func = new Function(`
+                ${code}
+                
+                // Call the function with the correct number of parameters
+                if (typeof ${functionName} === 'function') {
+                    const args = arguments[0];
+                    if (Array.isArray(args)) {
+                        return ${functionName}.apply(null, args);
+                    } else {
+                        return ${functionName}(args);
+                    }
+                } else {
+                    throw new Error('Function ${functionName} not found');
+                }
+            `);
+        } else {
+            // No function declaration found - try to execute as expression
+            func = new Function(`
+                ${code}
+                
+                // Try to find any available function
+                const funcNames = ['twoSum', 'reverseString', 'isPalindrome', 'maxSubArray', 'isValid', 
+                                 'mergeTwoLists', 'maxProfit', 'climbStairs', 'longestCommonPrefix', 
+                                 'search', 'maxArea', 'threeSum', 'removeDuplicates', 'plusOne', 
+                                 'rotate', 'singleNumber', 'intersect', 'solution', 'main'];
+                
+                for (const name of funcNames) {
+                    if (typeof eval(name) === 'function') {
+                        const args = arguments[0];
+                        if (Array.isArray(args)) {
+                            return eval(name).apply(null, args);
+                        } else {
+                            return eval(name)(args);
+                        }
+                    }
+                }
+                throw new Error('No executable function found');
+            `);
+        }
+        
+        // Execute with timeout protection
+        const startTime = Date.now();
+        
+        // Call function with appropriate parameters
+        if (inputs.length === 1) {
+            output = func(inputs[0]);
+        } else {
+            output = func(inputs);
+        }
+        
+        const executionTime = Date.now() - startTime;
+        
+        console.log('Execution output:', output);
+        
+        // Parse expected output
+        let expected;
+        try {
+            expected = JSON.parse(testCase.output);
+        } catch {
+            // Handle string outputs
+            const trimmed = testCase.output.trim();
+            if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+                (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+                expected = trimmed.slice(1, -1);
+            } else {
+                expected = testCase.output;
+            }
+        }
+        
+        console.log('Expected output:', expected);
+        
+        // Smart comparison
+        let passed = false;
+        
+        // Try different comparison methods
+        if (JSON.stringify(output) === JSON.stringify(expected)) {
+            passed = true;
+        } else if (String(output) === String(expected)) {
+            passed = true;
+        } else if (Array.isArray(output) && Array.isArray(expected)) {
+            // For arrays, try sorting both and comparing (for problems where order doesn't matter)
+            const sortedOutput = [...output].sort();
+            const sortedExpected = [...expected].sort();
+            if (JSON.stringify(sortedOutput) === JSON.stringify(sortedExpected)) {
+                passed = true;
+            }
+        }
+        
+        console.log('Test passed:', passed);
         
         return {
             passed,
             output: JSON.stringify(output),
             expected: testCase.output,
-            time: '0ms',
+            time: `${executionTime}ms`,
             memory: 'N/A',
-            status: 'Executed locally'
+            status: passed ? 'Accepted' : 'Wrong Answer'
         };
     } catch (error) {
+        console.error('Local execution error:', error);
         return {
             passed: false,
-            output: error.message,
+            output: `Runtime Error: ${error.message}`,
             expected: testCase.output,
             time: '0ms',
             memory: 'N/A',

@@ -19,14 +19,14 @@ class SimpleCodeEditor {
         textarea.id = 'code-editor-textarea';
         this.container.appendChild(textarea);
         
+        // Store reference first
+        this.editor = textarea;
+        
         // Apply styles
         this.applyStyles();
         
-        // Set initial template
+        // Set initial template (after editor reference is set)
         this.setTemplate();
-        
-        // Store reference
-        this.editor = textarea;
     }
     
     applyStyles() {
@@ -129,7 +129,12 @@ class SimpleCodeEditor {
             'Longest Common Prefix': { name: 'longestCommonPrefix', params: 'strs' },
             'Binary Search': { name: 'search', params: 'nums, target' },
             'Container With Most Water': { name: 'maxArea', params: 'height' },
-            '3Sum': { name: 'threeSum', params: 'nums' }
+            '3Sum': { name: 'threeSum', params: 'nums' },
+            'Remove Duplicates from Sorted Array': { name: 'removeDuplicates', params: 'nums' },
+            'Plus One': { name: 'plusOne', params: 'digits' },
+            'Rotate Array': { name: 'rotate', params: 'nums, k' },
+            'Single Number': { name: 'singleNumber', params: 'nums' },
+            'Intersection of Two Arrays II': { name: 'intersect', params: 'nums1, nums2' }
         };
         
         const func = functionMap[problemTitle] || { name: 'solution', params: 'input' };
